@@ -7,8 +7,11 @@ from sklearn.metrics import classification_report
 
 st.set_page_config(page_title="Anemia Detection App and Risk Monitoring" ,layout="wide")
 st.title("🩸 Anemia Detection • Risk Monitoring • Recommendations")
-st.write("This app predicts **anemia risk** using blood test values. "
-         "Upload your own CSV, or use demo mode to explore.")
+st.write(
+    "This dashboard analyzes blood test values to **detect anemia risk**, "
+    "track changes over time, and provide helpful insights. "
+    "Upload your own CSV — or explore using demo data."
+)
 REQUIRED_FEATURES = ["Gender", "Hemoglobin", "MCH", "MCHC", "MCV"]
 DATE_COL = "Date"
 PATIENT_ID = "Patient_ID"
