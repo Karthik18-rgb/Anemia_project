@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import classification_report
 
 st.set_page_config(page_title="Anemia Detection App and Risk Monitoring" ,layout="wide")
-st.title("🩸 Anemia Detection & Risk Monitoring - Phase 2")
+st.title("🩸 Anemia Detection • Risk Monitoring • Recommendations")
 st.write("This app predicts **anemia risk** using blood test values. "
          "Upload your own CSV, or use demo mode to explore.")
 REQUIRED_FEATURES = ["Gender", "Hemoglobin", "MCH", "MCHC", "MCV"]
@@ -26,8 +26,8 @@ def load_data(path):
 try: 
     data = load_data("data/sample.csv")
     st.info("Demo dataset loaded. Upload your own CSV to analyze real data")
-except:
-    st.error("sample.csv missing.")
+except FileNotFoundError:
+    st.error("sample.csv missing. Please upload a dataset to continue.")
     st.stop()
 
 uploaded = st.sidebar.file_uploader("Upload CSV file",type=['csv'])
@@ -55,6 +55,34 @@ if has_patient:
 else:
      df = data
 
+def get_recommendation(prob, hb):
+     if prob >= 80:
+          return "🔴 High risk - consult a doctor soon."
+     elif prob >= 50:
+          return "🟠 Moderate risk - repeat test & monitor diet."
+     elif hb < 11:
+          return "🟡 Low hemoglobin - review iron intake."
+     else:
+          return "🟢 Stable - continue monitoring."    
+
+def trend_message(hb_series):
+     if len(hb_series) < 3:
+          return "Insufficient visit history to analyze trend."
+     change = hb_series.iloc[-1] - hb_series.iloc[-3]
+     if change <= -1.0:
+          return f"Hemoglobin dropped {abs(change):.1f} g/dL recently - worsening trend."
+     elif change >= 1.0:
+          return f"Hemoglobin improved {change:.1f} g/dL recently"
+     else:
+          return "Hemoglobin is relatively stable."      
+
+def color_risk(val):
+     if val >= 80:
+          return "background-color:#d9534f; color:white; font-weight:bold"
+     if val >= 50:
+          return "background-color:#f0ad4e; color:black; font-weight:bold"
+     return "background-color:#5cb85c; color:white; font-weight:bold"
+
 
 st.header("🧠 Anemia Predictions")
 X = df[REQUIRED_FEATURES]
@@ -64,9 +92,10 @@ proba = model.predict_proba(X)[:, 1]
 results = df.copy()
 results["Prediction"] = preds
 results["Risk Probability (%)"] = (proba * 100).round(1)
+results["Recommendation"] = results.apply(lambda r: get_recommendation(r["Risk Probability (%)"], r["Hemoglobin"]), axis=1)
 
-st.write("Patient Records")
-st.dataframe(results)
+st.subheader("📋 Patient Risk Table")
+st.dataframe(results.style.applymap(color_risk, subset=["Risk Probability (%)"]), use_container_width=True)
 
 st.subheader("📈 Hemoglobin Distribution")
 fig, ax = plt.subplots(figsize=(10,5))
@@ -98,17 +127,17 @@ if has_date:
 
      slope = results["Risk Probability (%)"].diff().mean()
      if slope > 5:
-          st.error("Risk is increasing rapidly - medical review recommended.")
+          st.error("🚨 Risk is increasing rapidly - medical review recommended.")
      elif slope > 0:
-          st.warning("Risk is slowly increasing - keep monitoring")
+          st.warning("📈 Risk is slowly increasing - keep monitoring")
      else:
-          st.success("Risk appears stable or improving")          
+          st.success("🟢 Risk appears stable or improving")          
 
 else:
      st.info("Add Date column to enable risk monitoring")
 
 st.subheader("Risk Forecast (Next Visit)")
-if has_date:
+if has_date and len(results) > 2:
      results = results.sort_values(DATE_COL)
      results["Hb_Change"] = results["Hemoglobin"].diff()
      hb_trend = results["Hb_Change"].mean()
@@ -129,21 +158,26 @@ if has_date:
      fig.autofmt_xdate()
      st.pyplot(fig)
 
-     st.subheader("Predicted Next-Visit Risk")
+     st.subheader("🔮 Predicted Next-Visit Risk")
      st.markdown(f"""
 ### **{future_prob:.1f}%**
 _Risk estimate based on current trend_
 """)
 
      if future_prob >= 80:
-          st.error("High likelihood of anemia worsening - medical review recommended.")
+          st.error("🔴 High likelihood of anemia worsening - medical review recommended.")
      elif future_prob >= 60:
-          st.warning("Risk is gradually increasing - monitor closely")
+          st.warning("🟠 Risk is gradually increasing - monitor closely")
      else:
-          st.success("Risk expected to remain stable or improve")          
+          st.success("🟢 Risk expected to remain stable or improve")          
 
 else:
-     st.info("Add Date column to enable forecasting")
+     st.info("Need atleast 2 dated visits to forecast risk.")
+
+if has_patient:
+     st.subheader("Clinical-style Interpretation")    
+
+st.write(trend_message(df["Hemoglobin"]))      
 
 st.markdown("---")
-st.caption("Phase 3 - Early Anemia Risk Forecasting Dashboard")             
+st.caption("Phase 4 - Personalized Anemia Monitoring Dashboard (Educational Use Only)")             
