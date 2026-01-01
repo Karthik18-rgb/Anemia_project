@@ -107,5 +107,43 @@ if has_date:
 else:
      st.info("Add Date column to enable risk monitoring")
 
+st.subheader("Risk Forecast (Next Visit)")
+if has_date:
+     results = results.sort_values(DATE_COL)
+     results["Hb_Change"] = results["Hemoglobin"].diff()
+     hb_trend = results["Hb_Change"].mean()
+     next_hb = df["Hemoglobin"].iloc[-1] + hb_trend
+     next_hb = max(next_hb, 5)
+
+     future_row = df.iloc[-1].copy()
+     future_row["Hemoglobin"] = next_hb
+     future_features = future_row[REQUIRED_FEATURES].to_frame().T
+     future_prob = model.predict_proba(future_features)[0, 1] * 100
+
+     fig, ax = plt.subplots(figsize=(10,5))
+     sns.lineplot(x=df[DATE_COL], y=results["Risk Probability (%)"], marker='o', label="Current Risk")
+     future_date = df[DATE_COL].iloc[-1] + pd.to_timedelta(30, unit="d")
+     ax.plot(future_date, future_prob, "ro--", label="Forecast (Next Visit)")
+     ax.set_ylabel("Risk (%)")
+     plt.xticks(rotation=30)
+     fig.autofmt_xdate()
+     st.pyplot(fig)
+
+     st.subheader("Predicted Next-Visit Risk")
+     st.markdown(f"""
+### **{future_prob:.1f}%**
+_Risk estimate based on current trend_
+""")
+
+     if future_prob >= 80:
+          st.error("High likelihood of anemia worsening - medical review recommended.")
+     elif future_prob >= 60:
+          st.warning("Risk is gradually increasing - monitor closely")
+     else:
+          st.success("Risk expected to remain stable or improve")          
+
+else:
+     st.info("Add Date column to enable forecasting")
+
 st.markdown("---")
-st.caption("Phase 2 - Anemia Monitoring Dashboard")             
+st.caption("Phase 3 - Early Anemia Risk Forecasting Dashboard")             
