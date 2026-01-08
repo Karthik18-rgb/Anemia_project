@@ -1,6 +1,5 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
-from backend import services
 from .database import Base, engine, SessionLocal
 from . import models, schemas, services, crud
 
