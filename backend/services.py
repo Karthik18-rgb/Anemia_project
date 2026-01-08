@@ -1,10 +1,14 @@
+import os
 import joblib
 from pydantic import BaseModel
 from datetime import date
 import numpy as np
 from . import schemas
 
-model = joblib.load("model/anemia_model.pkl") 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODEL_PATH = os.path.join(BASE_DIR, "model", "anemia_model.pkl")
+
+model = joblib.load(MODEL_PATH) 
 
 def run_prediction(data: schemas.AnemiaInput):
     X = np.array([[data.Gender, data.Hemoglobin, data.MCH, data.MCHC, data.MCV]])

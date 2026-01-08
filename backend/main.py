@@ -3,7 +3,6 @@ from sqlalchemy.orm import Session
 from backend import services
 from .database import Base, engine, SessionLocal
 from . import models, schemas, services, crud
-from typing import Annotated
 
 Base.metadata.create_all(bind=engine)
 
