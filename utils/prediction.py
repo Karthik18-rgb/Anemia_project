@@ -2,7 +2,7 @@ import pandas as pd
 import requests
 import streamlit as st
 
-API_URL = "http://127.0.0.1:8000/predict"
+API_URL = "https://anemia-backend-faj9.onrender.com"
 REQUIRED_FEATURES = ["Gender", "Hemoglobin", "MCH", "MCHC", "MCV"]
 
 def run_predictions(df:pd.DataFrame, model, features):
