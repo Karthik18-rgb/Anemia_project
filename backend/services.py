@@ -1,7 +1,5 @@
 import os
 import joblib
-from pydantic import BaseModel
-from datetime import date
 import numpy as np
 from . import schemas
 
