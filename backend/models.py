@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime
-from backend.database import Base
+from .database import Base
 from datetime import datetime
 
 class RiskRecord(Base):

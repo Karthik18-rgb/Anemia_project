@@ -1,7 +1,7 @@
 import os
 import joblib
 import numpy as np
-from backend import schemas
+from . import schemas
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEL_PATH = os.path.join(BASE_DIR, "model", "anemia_model.pkl")
