@@ -14,7 +14,7 @@ def get_db():
     finally:
         db.close()    
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def home():
     return {"message": "Anemia API running"
     }
