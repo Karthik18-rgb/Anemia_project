@@ -15,7 +15,7 @@ st.write(
     "track changes over time, and provide helpful insights. "
 )
 
-st.sidebar.subheader("Login")
+st.sidebar.subheader("🔐 Login")
 username = st.sidebar.text_input("Username")
 password = st.sidebar.text_input("Password", type="password")
 if username != "doctor" or password != "anemia123":
@@ -23,7 +23,7 @@ if username != "doctor" or password != "anemia123":
      st.stop()
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("Data input Method")
+st.sidebar.subheader("📂 Data input Method")
 mode = st.sidebar.radio("Choose data input method", ["Demo mode", "Upload CSV", "Manual Entry"])
 
 REQUIRED_FEATURES = ["Gender", "Hemoglobin", "MCH", "MCHC", "MCV"]
@@ -32,7 +32,7 @@ data = None
 if mode == "Demo mode":
      try: 
           data = load_data("data/sample.csv")
-          st.info("Demo dataset loaded. Upload your own CSV to analyze real data")
+          st.info("🧪 Demo dataset loaded. Upload your own CSV to analyze real data")
      except FileNotFoundError:
           st.error("sample.csv missing.")
           st.stop()
@@ -47,7 +47,7 @@ elif mode == "Upload CSV":
           st.stop()    
 
 elif mode == "Manual Entry":
-     st.subheader("Enter Patient Data")
+     st.subheader("📝 Enter Patient Data")
      if "manual_data" not in st.session_state:
           st.session_state.manual_data = pd.DataFrame(columns=["Patient_ID", "Date", "Gender", "Hemoglobin", "MCH", "MCHC", "MCV"])
      pid = st.number_input("Patient ID", step=1, min_value=0)
@@ -58,7 +58,7 @@ elif mode == "Manual Entry":
      mchc = st.number_input("MCHC", format="%.1f")
      mcv = st.number_input("MCV", format="%.1f")
 
-     if st.button("Predict"):
+     if st.button("Add Visit"):
           new_row = pd.DataFrame([{
                "Patient_ID":pid,
                "Date":visit_date.strftime("%Y-%m-%d"),
@@ -72,7 +72,7 @@ elif mode == "Manual Entry":
           st.session_state.manual_data = pd.concat([st.session_state.manual_data, new_row], ignore_index=True)
 
 
-          st.success("Visit added. Add more - or switch tabs to analyze.")
+          st.success("✅ Visit added. Add more - or switch tabs to analyze.")
 
           data = st.session_state.manual_data
 
@@ -99,11 +99,11 @@ model = load_model()
 
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-     "Overview",
-     "Predictions",
-     "Trends",
-     "Forecast",
-     "Insights"
+     "📊 Overview",
+     "🧠 Predictions",
+     "📈 Trends",
+     "🔮 Forecast",
+     "💡 Insights"
 ])
 
 with tab1:
@@ -126,7 +126,7 @@ with tab2:
 
      csv = results.to_csv(index=False).encode("utf-8")
      st.download_button(
-          label="Download Predictions (CSV)", data=csv, file_name="anemia_prediction.csv", mime="text/csv"
+          label="⬇️ Download Predictions (CSV)", data=csv, file_name="anemia_prediction.csv", mime="text/csv"
      )
 
 with tab3:
@@ -159,4 +159,4 @@ with tab5:
           st.info("Select a patient to view individualized interpretation")       
 
 st.markdown("---")
-st.caption("Phase 8 - Login + Multiple Data Entry Options (Educational Use Only)")
+st.caption("An interactive anemia risk analysis dashboard for educational use.")
