@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from . import models, schemas
+from backend import models, schemas
 
 def save_record(db: Session, data: schemas.AnemiaInput, pred:  dict):
     record = models.RiskRecord(
