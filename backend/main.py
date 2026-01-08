@@ -29,3 +29,7 @@ def predict(input_data:schemas.AnemiaInput,  db: Session = Depends(get_db)):
 def get_history(patient_id: int, db: Session = Depends(get_db)):
     records = crud.get_records_by_patient(db, patient_id)
     return records
+
+@app.get("/health")
+def health():
+    return{"status": "ok"}

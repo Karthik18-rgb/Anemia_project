@@ -30,7 +30,7 @@ def run_predictions(df:pd.DataFrame, model, features):
         }
 
         try:
-            r = requests.post(API_URL, json=payload)
+            r = requests.post(API_URL, json=payload, timeout=10, headers={"Content-Type": "application/json"})
             if r.status_code == 200:
                 data = r.json()
                 prob = data.get("result",{}).get("probability", None)
