@@ -1,20 +1,95 @@
 import pandas as pd
 import joblib
 import streamlit as st
-import seaborn as sns
-import matplotlib.pyplot as plt
-from sklearn.metrics import classification_report
+
+from datetime import datetime
+from utils.preprocessing import load_data, prepare_patient_view
+from utils.prediction import run_predictions, forecast_next_visit
+from utils.risk import get_recommendation, trend_message, color_risk
+from utils.plot import plot_hb_dist, plot_hb_trend, plot_risk_trend, plot_forecast
 
 st.set_page_config(page_title="Anemia Detection App and Risk Monitoring" ,layout="wide")
 st.title("🩸 Anemia Detection • Risk Monitoring • Recommendations")
 st.write(
     "This dashboard analyzes blood test values to **detect anemia risk**, "
     "track changes over time, and provide helpful insights. "
-    "Upload your own CSV — or explore using demo data."
 )
+
+st.sidebar.subheader("Login")
+username = st.sidebar.text_input("Username")
+password = st.sidebar.text_input("Password", type="password")
+if username != "doctor" or password != "anemia123":
+     st.warning("Please login to continue")
+     st.stop()
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("Data input Method")
+mode = st.sidebar.radio("Choose data input method", ["Demo mode", "Upload CSV", "Manual Entry"])
+
 REQUIRED_FEATURES = ["Gender", "Hemoglobin", "MCH", "MCHC", "MCV"]
-DATE_COL = "Date"
-PATIENT_ID = "Patient_ID"
+data = None
+
+if mode == "Demo mode":
+     try: 
+          data = load_data("data/sample.csv")
+          st.info("Demo dataset loaded. Upload your own CSV to analyze real data")
+     except FileNotFoundError:
+          st.error("sample.csv missing.")
+          st.stop()
+
+elif mode == "Upload CSV":
+     uploaded = st.sidebar.file_uploader("Upload CSV file",type=['csv'])
+     if uploaded:
+        data = pd.read_csv(uploaded)
+        st.success("File uploaded!")  
+     else:
+          st.warning("Upload a CSV to continue.")
+          st.stop()    
+
+elif mode == "Manual Entry":
+     st.subheader("Enter Patient Data")
+     if "manual_data" not in st.session_state:
+          st.session_state.manual_data = pd.DataFrame(columns=["Patient_ID", "Date", "Gender", "Hemoglobin", "MCH", "MCHC", "MCV"])
+     pid = st.number_input("Patient ID", step=1, min_value=0)
+     visit_date = st.date_input("Visit Date")
+     gender = st.selectbox("Gender (0 = Female, 1 = Male)", [0, 1])
+     hb = st.number_input("Hemoglobin", format="%.1f")
+     mch = st.number_input("MCH", format="%.1f")
+     mchc = st.number_input("MCHC", format="%.1f")
+     mcv = st.number_input("MCV", format="%.1f")
+
+     if st.button("Predict"):
+          new_row = pd.DataFrame([{
+               "Patient_ID":pid,
+               "Date":visit_date.strftime("%Y-%m-%d"),
+               "Gender":gender,
+               "Hemoglobin":hb,
+               "MCH":mch,
+               "MCHC":mchc,
+               "MCV":mcv,
+          }])
+
+          st.session_state.manual_data = pd.concat([st.session_state.manual_data, new_row], ignore_index=True)
+
+
+          st.success("Visit added. Add more - or switch tabs to analyze.")
+
+          data = st.session_state.manual_data
+
+          if data.empty:
+               st.info("No records yet - enter at least one visit")
+
+     else:
+          st.info("Fill values, click **Add Visit** to store visit click Predict.")
+          st.stop()     
+
+
+if data is None or data.empty:
+     st.warning("No data to display yet.")
+     st.stop()
+
+
+df, has_date, has_patient  = prepare_patient_view(data)
 
 @st.cache_resource
 def load_model():
@@ -22,165 +97,66 @@ def load_model():
 
 model = load_model()
 
-@st.cache_data
-def load_data(path):
-    return pd.read_csv(path)
 
-try: 
-    data = load_data("data/sample.csv")
-    st.info("Demo dataset loaded. Upload your own CSV to analyze real data")
-except FileNotFoundError:
-    st.error("sample.csv missing. Please upload a dataset to continue.")
-    st.stop()
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+     "Overview",
+     "Predictions",
+     "Trends",
+     "Forecast",
+     "Insights"
+])
 
-uploaded = st.sidebar.file_uploader("Upload CSV file",type=['csv'])
-if uploaded is not None:
-        data = pd.read_csv(uploaded)
-        st.success("File uploaded!")
+with tab1:
+     st.subheader("Dataset Overview")
+     st.dataframe(data.head(), use_container_width=True)
+     st.info("Use the other tabs to explore predictions risk trends, " 
+             "and presonalized guidance.")
+     
 
-missing = [c for c in REQUIRED_FEATURES if c not in data.columns]
-if missing:
-    st.error(f"Missing required columns:{missing}")
-    st.stop()   
+with tab2:
+     st.header("🧠 Anemia Predictions")
+     @st.cache_data
+     def cached_predictions(df):
+          return run_predictions(df, model, REQUIRED_FEATURES)
+     results = cached_predictions(df)
+     results["Recommendation"] = results.apply(lambda r: get_recommendation(r["Risk Probability (%)"], r["Hemoglobin"]), axis=1)
 
+     st.subheader("📋 Patient Risk Table")
+     st.dataframe(results.style.applymap(color_risk, subset=["Risk Probability (%)"]), use_container_width=True)
 
-has_date = DATE_COL in data.columns
-if has_date:
-     data[DATE_COL]=pd.to_datetime(data[DATE_COL], errors='coerce')
-     data = data.sort_values(DATE_COL)  
+     csv = results.to_csv(index=False).encode("utf-8")
+     st.download_button(
+          label="Download Predictions (CSV)", data=csv, file_name="anemia_prediction.csv", mime="text/csv"
+     )
 
-
-has_patient = PATIENT_ID in data.columns
-if has_patient:
-     patient_ids = sorted(data[PATIENT_ID].unique())
-     selected = st.selectbox("Select Patient", patient_ids)
-     df = data[data[PATIENT_ID] == selected]
-else:
-     df = data
-
-def get_recommendation(prob, hb):
-     if prob >= 80:
-          return "🔴 High risk - consult a doctor soon."
-     elif prob >= 50:
-          return "🟠 Moderate risk - repeat test & monitor diet."
-     elif hb < 11:
-          return "🟡 Low hemoglobin - review iron intake."
+with tab3:
+     st.subheader("Risk & Hemoglobin Trends")
+     plot_hb_dist(data)
+     if not has_date or len(df) < 2:
+          st.info("Add at least 2 dated records to see trends.")
      else:
-          return "🟢 Stable - continue monitoring."    
+          plot_hb_trend(df, has_date)
+          plot_risk_trend(results, df, has_date)
 
-def trend_message(hb_series):
-     if len(hb_series) < 3:
-          return "Insufficient visit history to analyze trend."
-     change = hb_series.iloc[-1] - hb_series.iloc[-3]
-     if change <= -1.0:
-          return f"Hemoglobin dropped {abs(change):.1f} g/dL recently - worsening trend."
-     elif change >= 1.0:
-          return f"Hemoglobin improved {change:.1f} g/dL recently"
+with tab4:
+     st.subheader("Risk Forecast (Next Visit)")
+     if not has_date or len(df) < 2:
+          st.info("Add at least 2 dated records to see trends.")
      else:
-          return "Hemoglobin is relatively stable."      
+          future_prob, future_preds = forecast_next_visit(results, df, model)
+          plot_forecast(results, df, future_prob, future_preds, has_date)
+          st.subheader("🔮 Predicted Next-Visit Risk")
+          st.markdown(f"""
+                      ### **{future_prob:.1f}%**
+                       _Risk estimate based on current trend_
+                      """)
 
-def color_risk(val):
-     if val >= 80:
-          return "background-color:#d9534f; color:white; font-weight:bold"
-     if val >= 50:
-          return "background-color:#f0ad4e; color:black; font-weight:bold"
-     return "background-color:#5cb85c; color:white; font-weight:bold"
-
-
-st.header("🧠 Anemia Predictions")
-X = df[REQUIRED_FEATURES]
-preds = model.predict(X)
-proba = model.predict_proba(X)[:, 1]
-
-results = df.copy()
-results["Prediction"] = preds
-results["Risk Probability (%)"] = (proba * 100).round(1)
-results["Recommendation"] = results.apply(lambda r: get_recommendation(r["Risk Probability (%)"], r["Hemoglobin"]), axis=1)
-
-st.subheader("📋 Patient Risk Table")
-st.dataframe(results.style.applymap(color_risk, subset=["Risk Probability (%)"]), use_container_width=True)
-
-st.subheader("📈 Hemoglobin Distribution")
-fig, ax = plt.subplots(figsize=(10,5))
-sns.histplot(data["Hemoglobin"], kde=True, ax=ax)
-ax.set_xlabel("Hemoglobin")
-st.pyplot(fig)
-
-st.subheader("Hemoglobin Trend")
-if has_date:
-     fig, ax = plt.subplots(figsize=(10,5))
-     sns.lineplot(x=df[DATE_COL], y=df["Hemoglobin"], marker='o',ax=ax)
-     ax.axhline(12,label="Low Threshold", color="red", linestyle="--")
-     ax.set_ylabel("Hemoglobin")
-     ax.legend()
-     plt.xticks(rotation=30)
-     fig.autofmt_xdate()
-     st.pyplot(fig)
-else:
-     st.info("Add Date column to see trends.")    
-
-st.subheader("Risk Trend")
-if has_date:
-     fig, ax = plt.subplots(figsize=(10,5))
-     sns.lineplot(x=df[DATE_COL], y=results["Risk Probability (%)"], marker='o', ax=ax)
-     ax.set_ylabel("Risk (%)")
-     plt.xticks(rotation=30)
-     fig.autofmt_xdate()
-     st.pyplot(fig)
-
-     slope = results["Risk Probability (%)"].diff().mean()
-     if slope > 5:
-          st.error("🚨 Risk is increasing rapidly - medical review recommended.")
-     elif slope > 0:
-          st.warning("📈 Risk is slowly increasing - keep monitoring")
+with tab5:
+     st.subheader("Clinical-style Interpretation")   
+     if has_patient:
+          st.write(trend_message(df["Hemoglobin"]))    
      else:
-          st.success("🟢 Risk appears stable or improving")          
-
-else:
-     st.info("Add Date column to enable risk monitoring")
-
-st.subheader("Risk Forecast (Next Visit)")
-if has_date and len(results) > 2:
-     results = results.sort_values(DATE_COL)
-     results["Hb_Change"] = results["Hemoglobin"].diff()
-     hb_trend = results["Hb_Change"].mean()
-     next_hb = df["Hemoglobin"].iloc[-1] + hb_trend
-     next_hb = max(next_hb, 5)
-
-     future_row = df.iloc[-1].copy()
-     future_row["Hemoglobin"] = next_hb
-     future_features = future_row[REQUIRED_FEATURES].to_frame().T
-     future_prob = model.predict_proba(future_features)[0, 1] * 100
-
-     fig, ax = plt.subplots(figsize=(10,5))
-     sns.lineplot(x=df[DATE_COL], y=results["Risk Probability (%)"], marker='o', label="Current Risk")
-     future_date = df[DATE_COL].iloc[-1] + pd.to_timedelta(30, unit="d")
-     ax.plot(future_date, future_prob, "ro--", label="Forecast (Next Visit)")
-     ax.set_ylabel("Risk (%)")
-     plt.xticks(rotation=30)
-     fig.autofmt_xdate()
-     st.pyplot(fig)
-
-     st.subheader("🔮 Predicted Next-Visit Risk")
-     st.markdown(f"""
-### **{future_prob:.1f}%**
-_Risk estimate based on current trend_
-""")
-
-     if future_prob >= 80:
-          st.error("🔴 High likelihood of anemia worsening - medical review recommended.")
-     elif future_prob >= 60:
-          st.warning("🟠 Risk is gradually increasing - monitor closely")
-     else:
-          st.success("🟢 Risk expected to remain stable or improve")          
-
-else:
-     st.info("Need atleast 2 dated visits to forecast risk.")
-
-if has_patient:
-     st.subheader("Clinical-style Interpretation")    
-
-st.write(trend_message(df["Hemoglobin"]))      
+          st.info("Select a patient to view individualized interpretation")       
 
 st.markdown("---")
-st.caption("Phase 4 - Personalized Anemia Monitoring Dashboard (Educational Use Only)")             
+st.caption("Phase 8 - Login + Multiple Data Entry Options (Educational Use Only)")
