@@ -32,8 +32,9 @@ def plot_risk_trend(results, df, has_date):
         st.info("Add Date column to enable risk monitoring.")
         return
     fig, ax = plt.subplots(figsize=(10,5))
-    sns.lineplot(x=df[DATE_COL], y=results["Risk Probability (%)"], marker='o', ax=ax)
+    sns.lineplot(x=results[DATE_COL], y=results["Risk Probability (%)"], marker='o', ax=ax, color="#1f77b4")
     ax.set_ylabel("Risk (%)")
+    ax.set_title("Historical Anemia Risk Trend")
     plt.xticks(rotation=30)
     fig.autofmt_xdate()
     st.pyplot(fig)
@@ -56,9 +57,12 @@ def plot_forecast(results, df, future_prob, future_date, has_date):
         st.info("Need atleast 2 dated visits to forecast risk.")
         return
     fig, ax = plt.subplots(figsize=(10,5))
-    sns.lineplot(x=df[DATE_COL], y=results["Risk Probability (%)"], marker='o', label="Current Risk")
-    ax.plot(future_date, future_prob, "ro--", label="Forecast (Next Visit)")
+    ax.plot(df["Date"],results["Risk Probability (%)"], marker='o',color="grey", label="Historical Risk")
+    ax.plot(future_date, future_prob, "ro",markersize=10, label="Predicted Next Visit")
+    ax.plot([df["Date"].iloc[-1], future_date], [results["Risk Probability (%)"].iloc[-1], future_prob],
+            "r--", alpha=0.7)
     ax.set_ylabel("Risk (%)")
+    ax.set_title("Anemia Risk Forecast")
     plt.xticks(rotation=30)
     fig.autofmt_xdate()
     st.pyplot(fig)

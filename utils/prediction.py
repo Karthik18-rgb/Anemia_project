@@ -1,6 +1,9 @@
 import pandas as pd
 import requests
 import streamlit as st
+import time
+
+session = requests.Session()
 
 API_URL = "https://anemia-backend-faj9.onrender.com/predict"
 REQUIRED_FEATURES = ["Gender", "Hemoglobin", "MCH", "MCHC", "MCV"]
@@ -12,6 +15,7 @@ def run_predictions(df:pd.DataFrame, model, features):
         st.error(f"Missing required columns:{missing}")
         st.stop()
 
+    df = df.sort_values(["Patient_ID", "Date"]).reset_index(drop=True)
     results = df.copy()
 
     proba = []
@@ -30,7 +34,8 @@ def run_predictions(df:pd.DataFrame, model, features):
         }
 
         try:
-            r = requests.post(API_URL, json=payload, timeout=10, headers={"Content-Type": "application/json"})
+            time.sleep(1.5)
+            r = session.post(API_URL, json=payload, timeout=60, headers={"Content-Type": "application/json"})
             if r.status_code == 200:
                 data = r.json()
                 prob = data.get("result",{}).get("probability", None)
@@ -43,16 +48,21 @@ def run_predictions(df:pd.DataFrame, model, features):
         except Exception as e:
             st.error(f"Backend error: {e}")
             proba.append(None)
-            
+
     results["Risk Probability (%)"] = proba
+    results["Risk Probability (%)"] = pd.to_numeric(results["Risk Probability (%)"], errors="coerce").fillna(0)
     results["Prediction"] = results["Risk Probability (%)"].apply(lambda x : 1 if x is not None and x >= 50 else 0)
 
     return results
 
 def forecast_next_visit(results, df, model):
-    if "Date" in df.columns:
-        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-        results["Date"] = pd.to_datetime(results["Date"], errors="coerce")
+    df = df.copy()
+    results=results.copy()
+    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    results["Date"] = pd.to_datetime(results["Date"], errors="coerce")
+
+    if len(results) < 2:
+        return None, None
 
     results = results.sort_values("Date")
     results["Hb_Change"] = results["Hemoglobin"].diff()

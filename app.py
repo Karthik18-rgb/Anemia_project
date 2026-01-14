@@ -74,22 +74,17 @@ elif mode == "Manual Entry":
 
           st.success("✅ Visit added. Add more - or switch tabs to analyze.")
 
-          data = st.session_state.manual_data
-
-          if data.empty:
-               st.info("No records yet - enter at least one visit")
-
-     else:
-          st.info("Fill values, click **Add Visit** to store visit click Predict.")
-          st.stop()     
-
+     data = st.session_state.manual_data
 
 if data is None or data.empty:
      st.warning("No data to display yet.")
      st.stop()
 
+if data.empty and mode != "Manual Entry":
+     st.warning("No data to display yet.")
+     st.stop()
 
-df, has_date, has_patient  = prepare_patient_view(data)
+filtered_df, has_date, has_patient  = prepare_patient_view(data)
 
 @st.cache_resource
 def load_model():
@@ -115,10 +110,7 @@ with tab1:
 
 with tab2:
      st.header("🧠 Anemia Predictions")
-     @st.cache_data
-     def cached_predictions(df):
-          return run_predictions(df, model, REQUIRED_FEATURES)
-     results = cached_predictions(df)
+     results = run_predictions(filtered_df, model, REQUIRED_FEATURES)
      results["Recommendation"] = results.apply(lambda r: get_recommendation(r["Risk Probability (%)"], r["Hemoglobin"]), axis=1)
 
      st.subheader("📋 Patient Risk Table")
@@ -131,20 +123,21 @@ with tab2:
 
 with tab3:
      st.subheader("Risk & Hemoglobin Trends")
-     plot_hb_dist(data)
-     if not has_date or len(df) < 2:
+     plot_hb_dist(filtered_df)
+     if not has_date or len(filtered_df) < 2:
           st.info("Add at least 2 dated records to see trends.")
      else:
-          plot_hb_trend(df, has_date)
-          plot_risk_trend(results, df, has_date)
+          plot_hb_trend(filtered_df, has_date)
+          plot_risk_trend(results, filtered_df, has_date)
+ 
 
 with tab4:
      st.subheader("Risk Forecast (Next Visit)")
-     if not has_date or len(df) < 2:
+     if not has_date or len(filtered_df) < 2:
           st.info("Add at least 2 dated records to see trends.")
      else:
-          future_prob, future_preds = forecast_next_visit(results, df, model)
-          plot_forecast(results, df, future_prob, future_preds, has_date)
+          future_prob, future_preds = forecast_next_visit(results, filtered_df, model)
+          plot_forecast(results, filtered_df, future_prob, future_preds, has_date)
           st.subheader("🔮 Predicted Next-Visit Risk")
           st.markdown(f"""
                       ### **{future_prob:.1f}%**
@@ -154,7 +147,7 @@ with tab4:
 with tab5:
      st.subheader("Clinical-style Interpretation")   
      if has_patient:
-          st.write(trend_message(df["Hemoglobin"]))    
+          st.write(trend_message(filtered_df["Hemoglobin"]))    
      else:
           st.info("Select a patient to view individualized interpretation")       
 
