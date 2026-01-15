@@ -22,3 +22,5 @@ Thumbs.db
 
 .streamlit/
 .cache/
+
+risk_chart.png

@@ -1,12 +1,15 @@
 import pandas as pd
 import joblib
 import streamlit as st
+import os
+import tempfile
 
 from datetime import datetime
 from utils.preprocessing import load_data, prepare_patient_view
 from utils.prediction import run_predictions, forecast_next_visit
 from utils.risk import get_recommendation, trend_message, color_risk
 from utils.plot import plot_hb_dist, plot_hb_trend, plot_risk_trend, plot_forecast
+from utils.pdf_export import generate_pdf
 
 st.set_page_config(page_title="Anemia Detection App and Risk Monitoring" ,layout="wide")
 st.title("🩸 Anemia Detection • Risk Monitoring • Recommendations")
@@ -92,6 +95,13 @@ def load_model():
 
 model = load_model()
 
+@st.cache_data
+def cached_predictions(df, _model, features):
+     return run_predictions(df, _model, features)
+
+@st.cache_data
+def cached_pdf(results, patient_id, chart_path):
+     return generate_pdf(results, patient_id=patient_id, chart_path=chart_path)
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
      "📊 Overview",
@@ -110,7 +120,7 @@ with tab1:
 
 with tab2:
      st.header("🧠 Anemia Predictions")
-     results = run_predictions(filtered_df, model, REQUIRED_FEATURES)
+     results = cached_predictions(filtered_df, model, REQUIRED_FEATURES)
      results["Recommendation"] = results.apply(lambda r: get_recommendation(r["Risk Probability (%)"], r["Hemoglobin"]), axis=1)
 
      st.subheader("📋 Patient Risk Table")
@@ -137,7 +147,14 @@ with tab4:
           st.info("Add at least 2 dated records to see trends.")
      else:
           future_prob, future_preds = forecast_next_visit(results, filtered_df, model)
-          plot_forecast(results, filtered_df, future_prob, future_preds, has_date)
+          fig = plot_forecast(results, filtered_df, future_prob, future_preds, has_date)
+          tmp_dir = tempfile.gettempdir()
+          chart_path = os.path.join(tmp_dir, "risk_chart.png")
+          fig.savefig(chart_path, dpi=150, bbox_inches="tight")
+          pdf_buffer = cached_pdf(results, patient_id=filtered_df["Patient_ID"].iloc[0] if has_patient else None, chart_path=chart_path)
+          st.download_button(
+          label="Download PDF Report", data=pdf_buffer, file_name="anemia_report.pdf", mime="application/pdf"
+          )
           st.subheader("🔮 Predicted Next-Visit Risk")
           st.markdown(f"""
                       ### **{future_prob:.1f}%**

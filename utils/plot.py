@@ -66,7 +66,7 @@ def plot_forecast(results, df, future_prob, future_date, has_date):
     plt.xticks(rotation=30)
     fig.autofmt_xdate()
     st.pyplot(fig)
-
+    
     if future_prob >= 80:
           st.error("🔴 High likelihood of anemia worsening - medical review recommended.")
     elif future_prob >= 60:
@@ -74,3 +74,4 @@ def plot_forecast(results, df, future_prob, future_date, has_date):
     else:
           st.success("🟢 Risk expected to remain stable or improve")  
     
+    return fig
