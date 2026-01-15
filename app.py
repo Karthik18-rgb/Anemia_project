@@ -153,7 +153,7 @@ with tab4:
           fig.savefig(chart_path, dpi=150, bbox_inches="tight")
           pdf_buffer = cached_pdf(results, patient_id=filtered_df["Patient_ID"].iloc[0] if has_patient else None, chart_path=chart_path)
           st.download_button(
-          label="Download PDF Report", data=pdf_buffer, file_name="anemia_report.pdf", mime="application/pdf"
+          label="📄 Download PDF Report", data=pdf_buffer, file_name="anemia_report.pdf", mime="application/pdf"
           )
           st.subheader("🔮 Predicted Next-Visit Risk")
           st.markdown(f"""
