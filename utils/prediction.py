@@ -5,7 +5,7 @@ import time
 
 session = requests.Session()
 
-API_URL = "https://anemia-backend-faj9.onrender.com/predict"
+API_URL = "https://anemiaproject-production.up.railway.app/predict"
 REQUIRED_FEATURES = ["Gender", "Hemoglobin", "MCH", "MCHC", "MCV"]
 
 def run_predictions(df:pd.DataFrame, model, features):
