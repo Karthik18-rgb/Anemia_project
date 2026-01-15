@@ -20,8 +20,8 @@ def prepare_patient_view(data:pd.DataFrame):
           df[PATIENT_ID] = pd.to_numeric(df[PATIENT_ID], errors="coerce")
           patient_ids = sorted(df[PATIENT_ID].dropna().unique().tolist())
           if len(patient_ids) > 0:
-              selected_patient = st.sidebar.selectbox("Select Patient",patient_ids,index=0,key="selected_patient")
-          if selected_patient in patient_ids:
+              selected_patient = st.sidebar.selectbox("Select Patient",["All"]+patient_ids,index=0,key="selected_patient")
+          if selected_patient != "All":
               df=df[df[PATIENT_ID] == selected_patient].copy()
     if has_date:
         df[DATE_COL] = pd.to_datetime(df[DATE_COL], errors="coerce")
