@@ -86,7 +86,7 @@ anemia_project/
 
 ## ⚙️ Installation
 
-```bash
+```
 git clone <repo-url>
 cd anemia_project
 pip install -r requirements.txt
