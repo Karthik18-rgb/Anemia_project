@@ -53,133 +53,96 @@ anemia_project/
  - MCH 
  - MCHC 
  - MCV 
- --- 
- ### Model Architecture
-  The system uses a production-grade **Logistic Regression pipeline**:
-   ```python Pipeline([ ("impute", SimpleImputer(strategy="median")), ("scaler", StandardScaler()), ("model", LogisticRegression(class_weight="balanced", max_iter=1000)) ]) 
 
-Components:
-- SimpleImputer (median) – handles missing values
+--- 
 
-StandardScaler – normalizes feature ranges
+## 🧠 Machine Learning Details
 
-Logistic Regression – outputs stable probabilities
+### Model Pipeline
 
-Class weighting – handles dataset imbalance
+- SimpleImputer (median)
+- StandardScaler
+- Logistic Regression (class_weight=balanced)
 
-Why Logistic Regression?
+### Why this model?
 
-Produces reliable probability estimates
+- Stable probabilities
+- Handles missing data
+- Works with small datasets
+- Interpretable
+- Avoids 0% / 100% saturation
 
-Naturally interpretable for medical risk analysis
+---
 
-Less prone to overconfidence than tree models
+## 📊 Forecasting Logic
 
-Works well on small & imbalanced clinical datasets
+- Uses current risk
+- Hemoglobin trend (last 3 visits)
+- Trend-to-risk mapping
+- Bounded to 5% – 95%
+- 30-day projection
 
-Stable for deployment and forecasting
+---
 
-Probability Calibration
+## ⚙️ Installation
 
-Using standardized features + class-balanced logistic regression ensures:
-
-No probability saturation (0% / 100%)
-
-Smooth risk transitions
-
-Clinically meaningful outputs
-
-📊 Forecasting Logic
-
-Next-visit forecasting uses:
-
-Current predicted risk
-
-Hemoglobin trend over last 3 visits
-
-Trend-to-risk transformation
-
-Bounded projection (5% – 95%)
-
-Time extrapolation (30 days)
-
+```bash
+git clone <repo-url>
+cd anemia_project
+pip install -r requirements.txt
 This avoids unrealistic probability jumps and prevents ML misuse for time forecasting.
+```
+---
+## ▶️ Run Backend (FastAPI)
+- cd backend uvicorn main:app --reload 
 
-⚙️ Installation
+## ▶️ Run Frontend (Streamlit)
+- streamlit run app.py 
 
-git clone <repo-url> cd anemia_project python -m venv venv source venv/bin/activate # Linux / macOS venv\Scripts\activate # Windows pip install -r requirements.txt 
+---
 
-▶️ Run Backend (FastAPI)
+## 🧪 Demo Credentials
+- Username: doctor 
+- Password: anemia123 
 
-cd backend uvicorn main:app --reload 
+## Recommended:
+- Overview tab
+- Prediction table
+- Trend plots
+- Forecast screen
+- PDF export
 
-▶️ Run Frontend (Streamlit)
+---
 
-streamlit run app.py 
+## 🧩 Challenges Solved
+- Probability saturation (99–100% outputs)
+- Patient ID datetime conversion bug (1970 epoch issue)
+- Sorting instability
+- Backend ↔ frontend prediction mismatch
+- Feature scaling errors
+- Forecast logic misuse
+- Rolling probability smoothing bugs
+- Plotly axis formatting
+- PDF export consistency
 
-🧪 Demo Credentials
+## 🔮 Future Improvements
+- True next-visit ML forecasting model (sequence-based)
+- Multi-patient temporal modeling
+- Confidence intervals
+- SHAP explainability
+- Doctor role authentication
+- PostgreSQL integration
+- Cloud deployment (Docker + CI/CD)
+- Mobile responsive UI
 
-Username: doctor 
-Password: anemia123 
+---
 
-Recommended:
-
-Overview tab
-
-Prediction table
-
-Trend plots
-
-Forecast screen
-
-PDF export
-
-🧩 Challenges Solved
-
-Probability saturation (99–100% outputs)
-
-Patient ID datetime conversion bug (1970 epoch issue)
-
-Sorting instability
-
-Backend ↔ frontend prediction mismatch
-
-Feature scaling errors
-
-Forecast logic misuse
-
-Rolling probability smoothing bugs
-
-Plotly axis formatting
-
-PDF export consistency
-
-🔮 Future Improvements
-
-True next-visit ML forecasting model (sequence-based)
-
-Multi-patient temporal modeling
-
-Confidence intervals
-
-SHAP explainability
-
-Doctor role authentication
-
-PostgreSQL integration
-
-Cloud deployment (Docker + CI/CD)
-
-Mobile responsive UI
-
-⚠️ Medical Disclaimer
-
+## ⚠️ Medical Disclaimer
 This system is intended for educational and research purposes only.
 It does not replace professional medical diagnosis or treatment.
 Always consult a qualified healthcare provider for clinical decisions.
 
-🧑‍💻 Author
-
+## 🧑‍💻 Author
 Karthik Singh
 B.Tech Student | ML & Data Engineering Enthusiast
 Built after hours of debugging, broken graphs, broken models, probability explosions, and persistence.
