@@ -10,7 +10,7 @@ from sklearn.metrics import (classification_report,
 from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer
 import joblib
-from sklearn.ensemble import RandomForestClassifier
+
 
 df = pd.read_csv("data/raw/anemia.csv")
 
@@ -19,16 +19,9 @@ y = df["Result"]
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
 
-rf = RandomForestClassifier(n_estimators=300,
-                            class_weight="balanced",
-                            random_state=42)
-
-rf.fit(X_train, y_train)
-y_pred_rf = rf.predict(X_test)
-
 pipe = Pipeline([("impute", SimpleImputer(strategy='median')),
                  ("scaler", StandardScaler()),
-                 ("model", LogisticRegression(class_weight='balanced'))])
+                 ("model", LogisticRegression(max_iter=1000,class_weight='balanced'))])
 
 pipe.fit(X_train, y_train)
 y_pred = pipe.predict(X_test)
@@ -46,9 +39,7 @@ print(f"F1 Score:{f1:.4f}")
 print("\nDetailed Breakdown:\n")
 print(classification_report(y_test, y_pred))
 
-print(confusion_matrix(y_test, y_pred_rf))
-print(classification_report(y_test, y_pred_rf))
 
-joblib.dump(rf,"model/anemia_model.pkl")
-print("Saved Random Forest Model")
+joblib.dump(pipe,"model/anemia_model.pkl")
+print("Saved Logistic Regression Model")
 

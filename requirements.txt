@@ -10,3 +10,5 @@ SQLAlchemy==2.0.45
 uvicorn==0.34.2
 fastapi==0.115.12
 reportlab==4.4.9
+plotly==6.5.2
+kaleido==1.2.0

@@ -9,13 +9,17 @@ API_URL = "https://anemiaproject-production.up.railway.app/predict"
 REQUIRED_FEATURES = ["Gender", "Hemoglobin", "MCH", "MCHC", "MCV"]
 
 def run_predictions(df:pd.DataFrame, model, features):
+    df["Patient_ID"] = pd.to_numeric(df["Patient_ID"], errors='coerce').astype("Int64")
+    if pd.api.types.is_datetime64_any_dtype(df["Patient_ID"]):
+        st.error('BUG')
+        st.stop()
 
     missing = [c for c in REQUIRED_FEATURES if c not in df.columns]
     if missing:
         st.error(f"Missing required columns:{missing}")
         st.stop()
 
-    df = df.sort_values(["Patient_ID", "Date"]).reset_index(drop=True)
+    df = df.sort_values(by=["Patient_ID", "Date"],key=lambda col: col.astype("Int64") if col.name == "Patient_ID" else col).copy()
     results = df.copy()
 
     proba = []
@@ -50,7 +54,7 @@ def run_predictions(df:pd.DataFrame, model, features):
             proba.append(None)
 
     results["Risk Probability (%)"] = proba
-    results["Risk Probability (%)"] = pd.to_numeric(results["Risk Probability (%)"], errors="coerce").fillna(0)
+    results["Risk Probability (%)"] = (results["Risk Probability (%)"].rolling(window=3, min_periods=1).mean())
     results["Prediction"] = results["Risk Probability (%)"].apply(lambda x : 1 if x is not None and x >= 50 else 0)
 
     return results
@@ -61,19 +65,16 @@ def forecast_next_visit(results, df, model):
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
     results["Date"] = pd.to_datetime(results["Date"], errors="coerce")
 
-    if len(results) < 2:
+    if len(results) < 3:
         return None, None
-
+    df = df.sort_values("Date")
     results = results.sort_values("Date")
-    results["Hb_Change"] = results["Hemoglobin"].diff()
-    hb_trend = results["Hb_Change"].mean()
-    next_hb = df["Hemoglobin"].iloc[-1] + hb_trend
-    next_hb = max(next_hb, 5)
-
-    future_row = df.iloc[-1].copy()
-    future_row["Hemoglobin"] = next_hb
-    future_features = future_row[REQUIRED_FEATURES].to_frame().T
-    future_prob = model.predict_proba(future_features)[0, 1] * 100
+    current_prob = float(results["Risk Probability (%)"].iloc[-1])
+    recent_hb = df["Hemoglobin"].tail(3)
+    hb_trend = recent_hb.diff().mean()
+    trend_impact = -hb_trend * 8.0
+    future_prob = current_prob + trend_impact
+    future_prob = max(5.0, min(95.0, future_prob))
     future_date = df["Date"].iloc[-1] + pd.to_timedelta(30, unit="d")
 
-    return future_prob, future_date
+    return round(float(future_prob), 2), future_date

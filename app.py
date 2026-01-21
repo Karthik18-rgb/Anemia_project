@@ -121,6 +121,15 @@ with tab1:
 with tab2:
      st.header("🧠 Anemia Predictions")
      results = cached_predictions(filtered_df, model, REQUIRED_FEATURES)
+     results["Date"] = pd.to_datetime(filtered_df["Date"].values)
+     if has_patient:
+          results["Patient_ID"] = filtered_df["Patient_ID"].astype("Int64").values
+     if has_patient:
+          results = results.sort_values(
+          by=["Patient_ID", "Date"],
+          key=lambda col: col.astype("int64") if col.name == "Patient_ID" else col
+          )
+     
      results["Recommendation"] = results.apply(lambda r: get_recommendation(r["Risk Probability (%)"], r["Hemoglobin"]), axis=1)
 
      st.subheader("📋 Patient Risk Table")
@@ -150,7 +159,8 @@ with tab4:
           fig = plot_forecast(results, filtered_df, future_prob, future_preds, has_date)
           tmp_dir = tempfile.gettempdir()
           chart_path = os.path.join(tmp_dir, "risk_chart.png")
-          fig.savefig(chart_path, dpi=150, bbox_inches="tight")
+          if fig is not None:
+               fig.write_image(chart_path)
           pdf_buffer = cached_pdf(results, patient_id=filtered_df["Patient_ID"].iloc[0] if has_patient else None, chart_path=chart_path)
           st.download_button(
           label="📄 Download PDF Report", data=pdf_buffer, file_name="anemia_report.pdf", mime="application/pdf"
@@ -170,3 +180,4 @@ with tab5:
 
 st.markdown("---")
 st.caption("An interactive anemia risk analysis dashboard for educational use.")
+
